@@ -81,6 +81,28 @@ class CanvasUI{
         this.canvasTexture = new WL.Texture(this.canvas);
         this.material.flatTexture = this.canvasTexture;
 
+        if (config.panelSize){
+            object.resetScaling();
+            const scale = [config.panelSize.width, 0.01, config.panelSize.height]
+            object.scale( scale );
+        }
+
+        //Get rayleft and right
+        const root = new WL.Object(0);
+        root.children.forEach( child => {
+            if (child.name == 'Player'){
+                const space = child.children[0];
+                space.children.forEach( child => {
+                    if (child.name == 'CursorLeft') this.rayLeft = child;
+                    if (child.name == 'CursorRight') this.rayRight = child;
+                });
+            }
+        });
+
+        if (!(this.rayLeft && this.rayRight)) console.warn( 'Player CursorLeft or Player CursorRight not found');
+
+        const collision = object.addComponent( 'collision', { collider: 2, extents: object.scale, group: 1 })
+
         /*
         const inputs = Object.values( this.config ).filter( ( value )=>{
             return  value.type === "input-text";
@@ -99,7 +121,7 @@ class CanvasUI{
             this.content = content;
             const btns = Object.values(config).filter( (value) => { return value.type === "button" || value.overflow === "scroll" || value.type === "input-text" });
             if (btns.length>0){
-                if ( config === undefined || config.renderer === undefined ){
+                if ( config === undefined ){//|| config.renderer === undefined ){
                     console.warn("CanvasUI: button, scroll or input-text in the config but no renderer")
                 }else{
                     //this.renderer = config.renderer;
@@ -284,7 +306,7 @@ class CanvasUI{
     getElementAtLocation( x, y ){
         const self = this;
         const elms = Object.entries( this.config ).filter( ([ name, elm ]) => {
-            if (typeof elm === 'object' && name !== 'panelSize' && name !== 'body' && !(elm instanceof WebGLRenderer) && !(elm instanceof Scene)){
+            if (typeof elm === 'object' && name !== 'panelSize' && name !== 'body'){// && !(elm instanceof WebGLRenderer) && !(elm instanceof Scene)){
                 const pos = elm.position;
                 const width = (elm.width !== undefined) ? elm.width : self.config.width;
                 const height = (elm.height !== undefined) ? elm.height : self.config.height;
