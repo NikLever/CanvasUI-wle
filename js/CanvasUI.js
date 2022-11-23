@@ -87,22 +87,6 @@ class CanvasUI{
             object.scale( scale );
         }
 
-        //Get rayleft and right
-        const root = new WL.Object(0);
-        root.children.forEach( child => {
-            if (child.name == 'Player'){
-                const space = child.children[0];
-                space.children.forEach( child => {
-                    if (child.name == 'CursorLeft') this.rayLeft = child;
-                    if (child.name == 'CursorRight') this.rayRight = child;
-                });
-            }
-        });
-
-        if (!(this.rayLeft && this.rayRight)) console.warn( 'Player CursorLeft or Player CursorRight not found');
-
-        const collision = object.addComponent( 'collision', { collider: 2, extents: object.scale, group: 1 })
-
         /*
         const inputs = Object.values( this.config ).filter( ( value )=>{
             return  value.type === "input-text";
@@ -149,10 +133,26 @@ class CanvasUI{
     }
     
     initControllers(){
-        /*this.vec3 = new Vector3();
-        this.mat4 = new Matrix4();
-        this.raycaster = new Raycaster();
+        //Get rayleft and right
+        const root = new WL.Object(0);
+        root.children.forEach( child => {
+            if (child.name == 'Player'){
+                const space = child.children[0];
+                space.children.forEach( child => {
+                    if (child.name == 'CursorLeft') this.rayLeft = child;
+                    if (child.name == 'CursorRight') this.rayRight = child;
+                });
+            }
+        });
+
+        if (!(this.rayLeft && this.rayRight)) console.warn( 'Player CursorLeft or Player CursorRight not found');
+
+        const collision = object.addComponent( 'collision', { collider: 2, extents: object.scale, group: 1 })
         
+        this.tmpVec = new Float32Array(3);
+        this.tmpQuat = new Float32Array(4);
+        
+        /*
         const self = this;
         
         function onSelect( event ) {     
