@@ -93,5 +93,6 @@ WL.registerComponent('uiHandler', {
     },
     update: function(dt) {
         //console.log('update() with delta time', dt);
+        this.ui.update();
     },
 });

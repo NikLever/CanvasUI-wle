@@ -37,7 +37,12 @@ class CanvasUI{
         if (this.config.width === undefined) this.config.width = 512;
         if (this.config.height === undefined) this.config.height = 512;
         if (this.config.body === undefined) this.config.body = {fontFamily:'Arial', size:30, padding:20, backgroundColor: '#000', fontColor:'#fff', borderRadius: 6};
-        
+        if (this.config.collisionGroup === undefined ){
+            this.collisionGroup = 1;
+        }else{
+            this.collisionGroup = 1<<this.config.collisionGroup;
+        }
+
         const body = this.config.body;
         if (body.borderRadius === undefined) body.borderRadius = 6;
         if (body.fontFamily === undefined) body.fontFamily = "Arial";
@@ -87,6 +92,8 @@ class CanvasUI{
             object.scale( scale );
         }
 
+        this.object = object;
+
         /*
         const inputs = Object.values( this.config ).filter( ( value )=>{
             return  value.type === "input-text";
@@ -105,12 +112,7 @@ class CanvasUI{
             this.content = content;
             const btns = Object.values(config).filter( (value) => { return value.type === "button" || value.overflow === "scroll" || value.type === "input-text" });
             if (btns.length>0){
-                if ( config === undefined ){//|| config.renderer === undefined ){
-                    console.warn("CanvasUI: button, scroll or input-text in the config but no renderer")
-                }else{
-                    //this.renderer = config.renderer;
-                    this.initControllers();
-                }
+                WL.onXRSessionStart.push(this.initControllers.bind(this));
             }
         }
         
@@ -128,11 +130,12 @@ class CanvasUI{
         const height = this.config.height || 512;
         const intersect = this.intersects[index];
         if (intersect === undefined ) return 0;
-        if ( intersect.uv === undefined ) return 0;
-        return (1 - intersect.uv.y) * height;
+        if ( intersect.xy === undefined ) return 0;
+        return intersect.xy[1];
     }
     
-    initControllers(){
+    initControllers(s){
+        this.session = s;
         //Get rayleft and right
         const root = new WL.Object(0);
         root.children.forEach( child => {
@@ -147,86 +150,67 @@ class CanvasUI{
 
         if (!(this.rayLeft && this.rayRight)) console.warn( 'Player CursorLeft or Player CursorRight not found');
 
-        const collision = object.addComponent( 'collision', { collider: 2, extents: object.scale, group: 1 })
+        const collision = this.object.addComponent( 'collision', { collider: 2, extents: this.object.scale, group: this.collisionGroup })
         
         this.tmpVec = new Float32Array(3);
+        this.tmpVec1 = new Float32Array(3);
         this.tmpQuat = new Float32Array(4);
         
-        /*
-        const self = this;
-        
         function onSelect( event ) {     
-            const index = (event.target === self.controller) ? 0 : 1;
-            const elm = self.selectedElements[index];
+            const index = (event.inputSource.handedness === 'left') ? 0 : 1;
+            const elm = this.selectedElements[index];
             if ( elm !== undefined ){
                 if ( elm.type == "button"){
-                    self.select( index );
+                    this.select( index );
                 }else if ( elm.type == "input-text"){
-                    if ( self.keyboard ){
-                        if ( self.keyboard.visible ){
-                            self.keyboard.linkedUI = undefined;
-                            self.keyboard.linkedText = undefined;
-                            self.keyboard.linkedElement = undefined;
-                            self.keyboard.visible = false;
+                    if ( this.keyboard ){
+                        if ( this.keyboard.visible ){
+                            this.keyboard.linkedUI = undefined;
+                            this.keyboard.linkedText = undefined;
+                            this.keyboard.linkedElement = undefined;
+                            this.keyboard.visible = false;
                         }else{
-                            self.keyboard.linkedUI = self;
+                            this.keyboard.linkedUI = this;
                             let name;
-                            Object.entries( self.config ).forEach( ([prop, value]) => {
+                            Object.entries( this.config ).forEach( ([prop, value]) => {
                                 if ( value == elm ) name = prop;
                             });
-                            const y = (0.5-((elm.position.y + elm.height + self.config.body.padding )/self.config.height)) * self.panelSize.height;
-                            const h = Math.max( self.panelSize.width, self.panelSize.height )/2;
-                            self.keyboard.position.set( 0, -h/1.5 - y, 0.1 );
-                            self.keyboard.linkedText = self.content[ name ];
-                            self.keyboard.linkedName = name;
-                            self.keyboard.linkedElement = elm;
-                            self.keyboard.visible = true;
+                            const y = (0.5-((elm.position.y + elm.height + this.config.body.padding )/this.config.height)) * this.panelSize.height;
+                            const h = Math.max( this.panelSize.width, this.panelSize.height )/2;
+                            this.keyboard.position.set( 0, -h/1.5 - y, 0.1 );
+                            this.keyboard.linkedText = this.content[ name ];
+                            this.keyboard.linkedName = name;
+                            this.keyboard.linkedElement = elm;
+                            this.keyboard.visible = true;
                         }
                     }
                 }
             }
-        }
+        };
         
         function onSelectStart( event ){
-            const index = (event.target === self.controller) ? 0 : 1;
-            self.selectPressed[index] = true;
-            if ( self.selectedElements[index] !== undefined && self.selectedElements[index].overflow == "scroll"){
-                const elm = self.selectedElements[index];
-                self.scrollData[index] = { scrollY: elm.scrollY, rayY: self.getIntersectY(index) };
+            const index = (event.inputSource.handedness === 'left') ? 0 : 1;
+            this.selectPressed[index] = true;
+            if ( this.selectedElements[index] !== undefined && this.selectedElements[index].overflow == "scroll"){
+                const elm = this.selectedElements[index];
+                this.scrollData[index] = { scrollY: elm.scrollY, rayY: this.getIntersectY(index) };
             }
         }
         
         function onSelectEnd( event ){
-            const index = (event.target === self.controller) ? 0 : 1;
-            self.selectPressed[index] = false;
-            if ( self.selectedElements[index] !== undefined && self.selectedElements[index].overflow == "scroll"){
-                self.scrollData[index] = undefined;
+            const index = (event.inputSource.handedness === 'left') ? 0 : 1;
+            this.selectPressed[index] = false;
+            if ( this.selectedElements[index] !== undefined && this.selectedElements[index].overflow == "scroll"){
+                this.scrollData[index] = undefined;
             }
         }
         
-        this.controller = this.renderer.xr.getController( 0 );
-        this.controller.addEventListener( 'select', onSelect );
-        this.controller.addEventListener( 'selectstart', onSelectStart );
-        this.controller.addEventListener( 'selectend', onSelectEnd );
-        this.controller1 = this.renderer.xr.getController( 1 );
-        this.controller1.addEventListener( 'select', onSelect );
-        this.controller1.addEventListener( 'selectstart', onSelectStart );
-        this.controller1.addEventListener( 'selectend', onSelectEnd );
-          
-        if ( this.scene ){
-            const radius = 0.015;
-            const geometry = new IcosahedronBufferGeometry( radius );
-            const material = new MeshBasicMaterial( { color: 0x0000aa } );
-
-            const mesh1 = new Mesh( geometry, material );
-            mesh1.visible = false;
-            this.scene.add( mesh1 );
-            const mesh2 = new Mesh( geometry, material );
-            mesh2.visible = false;
-            this.scene.add( mesh2 );
-
-            this.intersectMesh = [ mesh1, mesh2 ];
-        }*/
+        s.addEventListener('end', function() {
+            this.session = null;
+        }.bind(this));
+        s.addEventListener( 'select', onSelect.bind(this) );
+        s.addEventListener( 'selectstart', onSelectStart.bind(this) );
+        s.addEventListener( 'selectend', onSelectEnd.bind(this) );
         
     }
     
@@ -304,12 +288,11 @@ class CanvasUI{
     }
 
     getElementAtLocation( x, y ){
-        const self = this;
         const elms = Object.entries( this.config ).filter( ([ name, elm ]) => {
             if (typeof elm === 'object' && name !== 'panelSize' && name !== 'body'){// && !(elm instanceof WebGLRenderer) && !(elm instanceof Scene)){
                 const pos = elm.position;
-                const width = (elm.width !== undefined) ? elm.width : self.config.width;
-                const height = (elm.height !== undefined) ? elm.height : self.config.height;
+                const width = (elm.width !== undefined) ? elm.width : this.config.width;
+                const height = (elm.height !== undefined) ? elm.height : this.config.height;
                 return (x>=pos.x && x<(pos.x+width) && y>=pos.y && y<(pos.y + height));
             }
         });
@@ -331,15 +314,15 @@ class CanvasUI{
         this.needsUpdate = true;
     }
 
-    hover( index = 0, uv ){
-        if (uv === undefined){
+    hover( index = 0, xy ){
+        if (xy === undefined){
             if (this.selectedElements[index] !== undefined){
                 this.selectedElements[index] = undefined;
                 this.needsUpdate = true;
             }
         }else{
-            const x = uv.x * (this.config.width || 512);
-            const y = (1 - uv.y) * (this.config.height || 512);
+            const x = xy[0];
+            const y = xy[1];
             //console.log( `hover uv:${uv.x.toFixed(2)},${uv.y.toFixed(2)}>>texturePos:${x.toFixed(0)}, ${y.toFixed(0)}`);
             const elm = this.getElementAtLocation( x, y );
             if (elm===null){
@@ -360,7 +343,7 @@ class CanvasUI{
             const elm = this.selectedElements[index];
             if (elm.onSelect) elm.onSelect();
             if (elm.type === 'input-text'){
-                this.keyboard.mesh.visible = true;
+                this.keyboard.object.active = true;
             }else{
                 this.selectedElements[index] = undefined;
             }
@@ -368,6 +351,7 @@ class CanvasUI{
     }
     
     scroll( index ){
+
         if ( this.selectedElements[index] === undefined ){
             if (this.intersectMesh) this.intersectMesh[index].visible = false;
             return;
@@ -391,30 +375,40 @@ class CanvasUI{
         }
     }
         
+    worldToCanvas( pos ){
+       // this.object.toObjectSpaceTransform( this.tmpVec, pos );
+        this.object.transformVectorInverseWorld( this.tmpVec, pos );
+        glMatrix.vec3.copy( this.tmpVec1, this.object.scalingWorld )
+        const xy = new Float32Array(2);
+        xy[0] = (pos[0]+1)/2 * this.config.width;
+        xy[1] = (pos[2]+1)/2 * this.config.height;
+        console.log(`CanvasUI.worldToCanvas pos:${pos[0].toFixed(2)},${pos[2].toFixed(2)} xy:${xy[0].toFixed(2)},${xy[1].toFixed(2)}`);
+        return xy;
+    }
+    
     handleController( controller, index ){
-        /*this.mat4.identity().extractRotation( controller.matrixWorld );
+        if (controller==null) return;
 
-        this.raycaster.ray.origin.setFromMatrixPosition( controller.matrixWorld );
-        this.raycaster.ray.direction.set( 0, 0, - 1 ).applyMatrix4( this.mat4 );
+        controller.getTranslationWorld( this.tmpVec );
+        controller.getForward( this.tmpVec1 );
 
-        const intersects = this.raycaster.intersectObject( this.mesh );
+        const intersects = WL.scene.rayCast( this.tmpVec, this.tmpVec1, this.collisionGroup, 100 );
 
-        if (intersects.length>0){
-            this.hover( index, intersects[0].uv );
-            this.intersects[index] = intersects[0];
+        if (intersects.hitCount>0){
+            intersects.xy = this.worldToCanvas( intersects.locations[0] );
+            this.hover( index, intersects.xy );
+            this.intersects[index] = intersects;
             this.scroll( index );
         }else{
             this.hover( index );
             this.intersects[index] = undefined;
             this.scroll( index );
-        }*/
+        }
     }
     
-	update(){    
-        //if (this.mesh===undefined) return;
-            
-        //if ( this.controller ) this.handleController( this.controller, 0 );
-        //if ( this.controller1 ) this.handleController( this.controller1, 1 );
+	update(){        
+        if ( this.rayLeft ) this.handleController( this.rayLeft, 0 );
+        if ( this.rayRight ) this.handleController( this.rayRight, 1 );
 
         //if ( this.keyboard && this.keyboard.visible ) this.keyboard.update();
         
@@ -432,26 +426,24 @@ class CanvasUI{
         context.fillStyle = bgColor;
         context.fillRect( 0, 0, this.config.width, this.config.height);
         
-        const self = this;
-        
         Object.entries(this.content).forEach( ([name, content]) => {
-            const config = (self.config[name]!==undefined) ? self.config[name] : self.config.body;
+            const config = (this.config[name]!==undefined) ? this.config[name] : this.config.body;
             const display = (config.display !== undefined) ? config.display : 'block';
             
             if (display !== 'none'){
                 const pos = (config.position!==undefined) ? config.position : { x: 0, y: 0 };                
-                const width = (config.width!==undefined) ? config.width : self.config.width;
-                const height = (config.height!==undefined) ? config.height : self.config.height;
+                const width = (config.width!==undefined) ? config.width : this.config.width;
+                const height = (config.height!==undefined) ? config.height : this.config.height;
 
                 if (config.type == "button" && !content.toLowerCase().startsWith("<path>")){
                     if ( config.borderRadius === undefined) config.borderRadius = 6;
                     if ( config.textAlign === undefined ) config.textAlign = "center";
                 }
                 
-                self.setClip( config );
+                this.setClip( config );
                 
                 const svgPath = content.toLowerCase().startsWith("<path>");
-                const hover = ((self.selectedElements[0] !== undefined && this.selectedElements[0] === config)||(self.selectedElements[1] !== undefined && this.selectedElements[1] === config));
+                const hover = ((this.selectedElements[0] !== undefined && this.selectedElements[0] === config)||(this.selectedElements[1] !== undefined && this.selectedElements[1] === config));
                 
                 if ( config.backgroundColor !== undefined){
                     if (hover && config.type== "button" && config.hover !== undefined){
@@ -483,7 +475,7 @@ class CanvasUI{
                         context.fill(path);
                         context.restore();
                     }else{
-                        self.wrapText( name, content )
+                        this.wrapText( name, content )
                     }
 
                     if (stroke){
@@ -498,8 +490,8 @@ class CanvasUI{
                         this.loadImage(content).then(img =>{
                             console.log(`w: ${img.width} | h: ${img.height}`);
                             config.img = img;
-                            self.needsUpdate = true;
-                            self.update();           
+                            this.needsUpdate = true;
+                            this.update();           
                         }).catch(err => console.error(err));
                     }else{
                         const aspect = config.img.width/config.img.height;
@@ -557,38 +549,40 @@ class CanvasUI{
     
     get visible(){
         if (this.mesh === undefined ) return false;
-        return this.mesh.visible;
+        return this.mesh.active;
     }
     
     set visible(value){
         if (this.mesh){
-            this.mesh.visible = value;
+            this.mesh.active = value;
         }
     }
     
     get position(){
-        if (this.mesh === undefined) return undefined;
-        return this.mesh.position;
+        if (this.object === undefined) return undefined;
+        this.object.getTranslationWorld( this.tmpVec );
+        return this.tmpVec;
     }
     
     set position(value){
-        if (this.mesh === undefined) return;
-        if (!(value instanceof Vector3) ){
-            console.error( 'CanvasUI trying to set the mesh position using a parameter that is not a THREE.Vector3');
+        if (this.object === undefined) return;
+        if (!(value instanceof Float32Array) ){
+            console.error( 'CanvasUI trying to set the object position using a parameter that is not a Float32Array');
             return;
         }
-        this.mesh.position.copy( value );
+        this.object.setTranslationWorld( value );
     }
     
     get quaternion(){
-        if (this.mesh === undefined) return undefined;
-        return this.mesh.quaternion;
+        if (this.object === undefined) return undefined;
+        this.object.getTranslationWorld( this.tmpVec );
+        return this.tmpVec;
     }
     
     set quaternion(value){
         if (this.mesh === undefined) return;
         if (!(value instanceof QUaternion) ){
-            console.error( 'CanvasUI trying to set the mesh quaternion using a parameter that is not a THREE.Quaternion');
+            console.error( 'CanvasUI trying to set the object quaternion using a parameter that is not a THREE.Quaternion');
             return;
         }
         this.mesh.quaternion.copy( value );
@@ -693,5 +687,3 @@ class CanvasUI{
 		});
 	}
 }
-
-//export { CanvasUI };
