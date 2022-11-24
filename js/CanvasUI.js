@@ -93,6 +93,9 @@ class CanvasUI{
         }
 
         this.object = object;
+        this.tmpVec = new Float32Array(3);
+        this.tmpVec1 = new Float32Array(3);
+        this.tmpQuat = new Float32Array(4);
 
         /*
         const inputs = Object.values( this.config ).filter( ( value )=>{
@@ -134,6 +137,10 @@ class CanvasUI{
         return intersect.xy[1];
     }
     
+    get selectIsPressed(){
+        return this.selectPressed[0] || this.selectPressed[1];
+    }
+
     initControllers(s){
         this.session = s;
         //Get rayleft and right
@@ -150,11 +157,10 @@ class CanvasUI{
 
         if (!(this.rayLeft && this.rayRight)) console.warn( 'Player CursorLeft or Player CursorRight not found');
 
-        const collision = this.object.addComponent( 'collision', { collider: 2, extents: this.object.scale, group: this.collisionGroup })
-        
-        this.tmpVec = new Float32Array(3);
-        this.tmpVec1 = new Float32Array(3);
-        this.tmpQuat = new Float32Array(4);
+        const extents = new Float32Array(3);
+        glMatrix.vec3.copy( extents, this.object.scalingWorld );
+        //glMatrix.vec3.scale( extents, extents, 1.1 );
+        const collision = this.object.addComponent( 'collision', { collider: 2, extents, group: this.collisionGroup })
         
         function onSelect( event ) {     
             const index = (event.inputSource.handedness === 'left') ? 0 : 1;
@@ -377,12 +383,16 @@ class CanvasUI{
         
     worldToCanvas( pos ){
        // this.object.toObjectSpaceTransform( this.tmpVec, pos );
-        this.object.transformVectorInverseWorld( this.tmpVec, pos );
-        glMatrix.vec3.copy( this.tmpVec1, this.object.scalingWorld )
+        this.object.transformPointInverseWorld( this.tmpVec, pos );
+        glMatrix.vec3.copy( this.tmpVec1, this.object.scalingWorld );
+        glMatrix.vec3.div( this.tmpVec, this.tmpVec, this.tmpVec1 );
         const xy = new Float32Array(2);
-        xy[0] = (pos[0]+1)/2 * this.config.width;
-        xy[1] = (pos[2]+1)/2 * this.config.height;
-        console.log(`CanvasUI.worldToCanvas pos:${pos[0].toFixed(2)},${pos[2].toFixed(2)} xy:${xy[0].toFixed(2)},${xy[1].toFixed(2)}`);
+        xy[0] = (1 - (this.tmpVec[0]+1)/2) * this.config.width;
+        xy[1] = (1 - (this.tmpVec[2]+1)/2) * this.config.height;
+        //obj:${this.tmpVec[0].toFixed(2)},${this.tmpVec[2].toFixed(2)}`;
+        //const str = `pos:${pos[0].toFixed(2)},${pos[2].toFixed(2)} xy:${xy[0].toFixed(2)},${xy[1].toFixed(2)}`;
+        //this.updateElement('info', str);
+        //if (this.selectIsPressed) console.log(`CanvasUI.worldToCanvas ${str}`);
         return xy;
     }
     
