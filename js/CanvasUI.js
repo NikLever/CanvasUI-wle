@@ -382,7 +382,6 @@ class CanvasUI{
     }
         
     worldToCanvas( pos ){
-       // this.object.toObjectSpaceTransform( this.tmpVec, pos );
         this.object.transformPointInverseWorld( this.tmpVec, pos );
         glMatrix.vec3.copy( this.tmpVec1, this.object.scalingWorld );
         glMatrix.vec3.div( this.tmpVec, this.tmpVec, this.tmpVec1 );

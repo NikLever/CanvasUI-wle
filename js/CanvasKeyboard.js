@@ -1,20 +1,26 @@
 //import { CanvasUI } from './CanvasUI.js';
 
 class CanvasKeyboard{
-    constructor( width, renderer, lang = "EN" ){
+    constructor( width, panel, lang = "EN" ){
         const config = this.getConfig( lang );
         config.panelSize = { width, height: width * 0.5 };
         config.height = 256;
         config.body = { backgroundColor: "#555" };
-        config.renderer = renderer;
+
+        this.object = WL.scene.addObject();
+        this.object.name = 'keyboard';
+        const mesh = this.object.addComponent('mesh');
+
         const content = this.getContent( lang );
-        this.keyboard = new CanvasUI( content, config );
+        this.keyboard = new CanvasUI( content, config, object );
         this.keyboard.mesh.visible = false;
         this.shift = false;
+
+        //this.
     }
     
-    get mesh(){
-        return this.keyboard.mesh;
+    get object(){
+        return this.keyboard.object;
     }
     
     getConfig( lang ){
@@ -163,7 +169,7 @@ class CanvasKeyboard{
     }
     
     get visible(){
-        return this.keyboard.mesh.visible;
+        return this.keyboard.object.active;
     }
     
     set visible( value ){
