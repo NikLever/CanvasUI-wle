@@ -90,6 +90,9 @@ class CanvasUI{
             object.resetScaling();
             const scale = [config.panelSize.width, 0.01, config.panelSize.height]
             object.scale( scale );
+            this.panelSize = config.panelSize;
+        }else{
+            this.panelSize = { width: 1, height: 1 };
         }
 
         this.object = object;
@@ -97,16 +100,22 @@ class CanvasUI{
         this.tmpVec1 = new Float32Array(3);
         this.tmpQuat = new Float32Array(4);
 
-        /*
         const inputs = Object.values( this.config ).filter( ( value )=>{
             return  value.type === "input-text";
         });
         if ( inputs.length > 0 ){
-            this.keyboard = new CanvasKeyboard(this.panelSize.width, this.config.renderer );
-            const mesh = this.keyboard.mesh;
-            mesh.position.set( 0, -0.3, 0.2 );
-            this.mesh.add( this.keyboard.mesh );
-        }*/
+            const width = (config.panelSize) ? config.panelSize.width : 1;
+            const height = (config.panelSize) ? config.panelSize.height : 1;
+            this.keyboard = new CanvasKeyboard(width, this );
+            const obj = this.keyboard.object;
+            obj.translate( [0, -height, -3] );
+            glMatrix.vec3.divide(this.tmpVec, obj.scalingLocal, object.scalingWorld);
+            obj.resetScaling();
+            obj.scale(this.tmpVec);
+            obj.parent = object;
+            obj.setDirty();
+            this.keyboard.visible = false;
+        }
         
         if (content === undefined){
             this.content = { body: "" };
@@ -183,7 +192,7 @@ class CanvasUI{
                             });
                             const y = (0.5-((elm.position.y + elm.height + this.config.body.padding )/this.config.height)) * this.panelSize.height;
                             const h = Math.max( this.panelSize.width, this.panelSize.height )/2;
-                            this.keyboard.position.set( 0, -h/1.5 - y, 0.1 );
+                            //this.keyboard.position.set( [0, h/1.5 - y, -0.1] );
                             this.keyboard.linkedText = this.content[ name ];
                             this.keyboard.linkedName = name;
                             this.keyboard.linkedElement = elm;
@@ -419,7 +428,7 @@ class CanvasUI{
         if ( this.rayLeft ) this.handleController( this.rayLeft, 0 );
         if ( this.rayRight ) this.handleController( this.rayRight, 1 );
 
-        //if ( this.keyboard && this.keyboard.visible ) this.keyboard.update();
+        if ( this.keyboard && this.keyboard.visible ) this.keyboard.update();
         
         if ( !this.needsUpdate ) return;
 		

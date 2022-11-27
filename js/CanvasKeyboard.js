@@ -1,22 +1,24 @@
 //import { CanvasUI } from './CanvasUI.js';
 
 class CanvasKeyboard{
-    constructor( width, panel, lang = "EN" ){
+    constructor( width, canvasui, lang = "EN" ){
         const config = this.getConfig( lang );
         config.panelSize = { width, height: width * 0.5 };
         config.height = 256;
         config.body = { backgroundColor: "#555" };
 
-        this.object = WL.scene.addObject();
-        this.object.name = 'keyboard';
-        const mesh = this.object.addComponent('mesh');
+        const object = WL.scene.addObject();
+        object.name = 'keyboard';
+        const mesh = object.addComponent('mesh');
+        const uimesh = canvasui.object.getComponent('mesh');
+        mesh.mesh = uimesh.mesh;
+        mesh.material = uimesh.material.clone();
 
-        const content = this.getContent( lang );
+        const content = this.getContent(lang);
+
         this.keyboard = new CanvasUI( content, config, object );
-        this.keyboard.mesh.visible = false;
-        this.shift = false;
 
-        //this.
+        this.tmpVec = new Float32Array(3);
     }
     
     get object(){
@@ -165,15 +167,22 @@ class CanvasKeyboard{
     }
     
     get position(){
-        return this.keyboard.mesh.position;    
+        const pos = this.keyboard.object.getTranslationWorld( this.tmpVec );
+        return pos;    
+    }
+
+    get positionLocal(){
+        const pos = this.keyboard.object.getTranslationLocal( this.tmpVec );
+        return pos;    
     }
     
     get visible(){
-        return this.keyboard.object.active;
+        return this.active;
     }
     
     set visible( value ){
-        this.keyboard.mesh.visible = value;    
+        this.keyboard.object.active = value;  
+        this.active = value;  
     }
     
     setKeyboard( index ){

@@ -1474,7 +1474,10 @@
                 },
                 {
                     "type": "uiHandler",
-                    "active": true
+                    "active": true,
+                    "uiHandler": {
+                        "panel": "simple"
+                    }
                 }
             ],
             "transformation": [
@@ -2287,7 +2290,7 @@
             "version": [
                 0,
                 9,
-                3
+                4
             ]
         },
         "vr": {
@@ -2301,7 +2304,7 @@
             ]
         },
         "runtime": {
-            "visualizeColliders": true,
+            "visualizeColliders": false,
             "webxr": {
                 "optionalFeatures": {
                     "local-floor": true
@@ -2465,6 +2468,18 @@
         "229": {
             "link": {
                 "name": "Sky",
+                "file": "default"
+            }
+        },
+        "232": {
+            "link": {
+                "name": "Phong Normalmapped",
+                "file": "default"
+            }
+        },
+        "233": {
+            "link": {
+                "name": "Phong Lightmapped",
                 "file": "default"
             }
         }
