@@ -1468,7 +1468,7 @@
                 {
                     "type": "mesh",
                     "mesh": {
-                        "mesh": "8",
+                        "mesh": "7",
                         "material": "230"
                     }
                 },
@@ -1476,26 +1476,29 @@
                     "type": "uiHandler",
                     "active": true,
                     "uiHandler": {
-                        "panel": "simple"
+                        "panel": "input-text"
                     }
+                },
+                {
+                    "type": "cursor-target"
                 }
             ],
             "transformation": [
-                -0.5000028,
-                -0.0026369,
-                0.0014707,
+                0.500014,
+                -0.0,
+                -0.0,
                 0.0,
-                4.22239772035482e-8,
-                0.0048648,
-                0.0087369,
+                -0.0,
+                0.4698462,
+                -0.1710101,
                 0.0,
-                -0.0030252,
-                0.4377093,
-                -0.243726,
                 0.0,
-                0.000001,
-                1.3179399,
-                -1.2934863,
+                0.0034202,
+                0.0093969,
+                0.0,
+                9.785873089640518e-7,
+                1.3179446,
+                -1.2934968,
                 1.0
             ]
         },
@@ -1864,6 +1867,12 @@
                 "name": "texture_1",
                 "file": "models\\oculus-touch-v2-right.glb"
             }
+        },
+        "235": {
+            "link": {
+                "name": "canvas-ui-up.png",
+                "file": "images\\canvas-ui-up.png"
+            }
         }
     },
     "images": {
@@ -1906,6 +1915,12 @@
                 256,
                 256
             ]
+        },
+        "234": {
+            "link": {
+                "name": "canvas-ui-up.png",
+                "file": "images\\canvas-ui-up.png"
+            }
         }
     },
     "materials": {
@@ -2157,7 +2172,7 @@
                     0.8392072,
                     1.0
                 ],
-                "flatTexture": "45"
+                "flatTexture": "235"
             },
             "name": "CanvasUI"
         }
@@ -2490,7 +2505,8 @@
         "models/hand-left.glb",
         "models/hand-right.glb",
         "models/button.glb",
-        "models/teleport-indicator.glb"
+        "models/teleport-indicator.glb",
+        "images/canvas-ui-up.png"
     ],
     "fonts": {
         "231": {

@@ -4,6 +4,16 @@ WL.registerComponent('uiHandler', {
     init: function() {
     },
     start: function() {
+        this.target = this.object.getComponent('cursor-target');
+        this.target.addHoverFunction(this.onHover.bind(this));
+        this.target.addUnHoverFunction(this.onUnHover.bind(this));
+        this.target.addMoveFunction(this.onMove.bind(this));
+        this.target.addDownFunction(this.onDown.bind(this));
+        this.target.addUpFunction(this.onUp.bind(this));
+        
+        this.soundClick = this.object.addComponent('howler-audio-source', {src: 'sfx/click.wav', spatial: true});
+        this.soundUnClick = this.object.addComponent('howler-audio-source', {src: 'sfx/unclick.wav', spatial: true});
+
         switch ( this.panel ){
             case 0://simple
             this.simplePanel();
@@ -137,7 +147,7 @@ WL.registerComponent('uiHandler', {
             next: "<path>M 54 32 L 10 10 L 10 54 Z</path>",
             continue: "Continue"
         }
-        
+
         this.ui = new CanvasUI( content, config, this.object );
         this.ui.update();
         let ui = this.ui;
@@ -223,9 +233,111 @@ WL.registerComponent('uiHandler', {
         }
         
         this.ui = new CanvasUI( content, config, this.object );
+
+        const target = this.ui.keyboard.object.getComponent('cursor-target');
+        target.addHoverFunction(this.onHoverKeyboard.bind(this));
+        target.addUnHoverFunction(this.onUnHoverKeyboard.bind(this));
+        target.addMoveFunction(this.onMoveKeyboard.bind(this));
+        target.addDownFunction(this.onDown.bind(this));
+        target.addUpFunction(this.onUpKeyboard.bind(this));
+
         this.ui.update();
         let ui = this.ui;
     }, 
+    onHover: function(_, cursor) {
+        //console.log('onHover');
+        const xy = this.ui.worldToCanvas(cursor.cursorPos);
+        if (this.ui) this.ui.hover(0, xy);
+
+        if(cursor.type == 'finger-cursor') {
+            this.onDown(_, cursor);
+        }
+
+        this.hapticFeedback(cursor.object, 0.5, 50);
+    },
+
+    onMove: function(_, cursor) {
+        this.ui.worldToCanvas(cursor.cursorPos);
+        const xy = this.ui.worldToCanvas(cursor.cursorPos);
+        if (this.ui) this.ui.hover(0, xy);
+
+        this.hapticFeedback(cursor.object, 0.5, 50);
+    },
+
+    onDown: function(_, cursor) {
+        console.log('onDown');
+        this.soundClick.play();
+
+        this.hapticFeedback(cursor.object, 1.0, 20);
+    },
+
+    onUp: function(_, cursor) {
+        console.log('onUp');
+        this.soundUnClick.play();
+
+        if (this.ui) this.ui.select( 0, true );
+
+        this.hapticFeedback(cursor.object, 0.7, 20);
+    },
+
+    onUnHover: function(_, cursor) {
+        console.log('onUnHover');
+        
+        if (this.ui) this.ui.hover(0);
+
+        this.hapticFeedback(cursor.object, 0.3, 50);
+    },
+
+    onHoverKeyboard: function(_, cursor) {
+        //console.log('onHover');
+        if (!this.ui || !this.ui.keyboard || !this.ui.keyboard.keyboard) return;
+
+        const ui = this.ui.keyboard.keyboard;
+        const xy = ui.worldToCanvas(cursor.cursorPos);
+        ui.hover(0, xy);
+
+        if(cursor.type == 'finger-cursor') {
+            this.onDown(_, cursor);
+        }
+
+        this.hapticFeedback(cursor.object, 0.5, 50);
+    },
+
+    onMoveKeyboard: function(_, cursor) {
+        if (!this.ui || !this.ui.keyboard || !this.ui.keyboard.keyboard) return;
+
+        const ui = this.ui.keyboard.keyboard;
+        const xy = ui.worldToCanvas(cursor.cursorPos);
+        ui.hover(0, xy);
+
+        this.hapticFeedback(cursor.object, 0.5, 50);
+    },
+
+    onUpKeyboard: function(_, cursor) {
+        console.log('onUpKeyboard');
+        this.soundUnClick.play();
+
+        if (this.ui && this.ui.keyboard && this.ui.keyboard.keyboard) this.ui.keyboard.keyboard.select(0);
+
+        this.hapticFeedback(cursor.object, 0.7, 20);
+    },
+
+    onUnHoverKeyboard: function(_, cursor) {
+        console.log('onUnHoverKeyboard');
+        
+        if (this.ui && this.ui.keyboard && this.ui.keyboard.keyboard) this.ui.keyboard.keyboard.hover(0);
+
+        this.hapticFeedback(cursor.object, 0.3, 50);
+    },
+
+    hapticFeedback: function(object, strength, duration) {
+        const input = object.getComponent('input');
+        if(input && input.xrInputSource) {
+            const gamepad = input.xrInputSource.gamepad;
+            if(gamepad && gamepad.hapticActuators) gamepad.hapticActuators[0].pulse(strength, duration);
+        }
+    },
+    
     update: function(dt) {
         //console.log('update() with delta time', dt);
         this.ui.update();
