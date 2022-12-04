@@ -358,11 +358,29 @@ class CanvasUI{
         if ( inputs.length > 0 ){
             const width = (config.panelSize) ? config.panelSize.width : 1;
             const height = (config.panelSize) ? config.panelSize.height : 1;
+            let halfheight = height/2;
             this.keyboard = new CanvasKeyboard(width, this );
+            //Calculate main panel offset
+            this.getEuler( this.tmpVec, this.object.rotationWorld );
+            let theta = this.tmpVec[1];
+            this.tmpVec[0] = 0;
+            this.tmpVec[2] = -Math.cos(theta)/halfheight;
+            this.tmpVec[1] = Math.sin(theta)/halfheight;
+            console.log(`CanvasUI create keyboard 1 theta=${theta.toFixed(2)} offset=${this.vecToStr(this.tmpVec)}`);
+            //Calculate keyboard panel offset
+            halfheight = width/4;
+            this.getEuler( this.tmpVec1, this.keyboard.keyboard.object.rotationWorld );
+            theta += -15 * Math.PI/180;
+            this.tmpVec1[0] = 0;
+            this.tmpVec1[2] = -Math.cos(theta)/halfheight;
+            this.tmpVec1[1] = Math.sin(theta)/halfheight;           
+            console.log(`CanvasUI create keyboard 2 theta=${theta.toFixed(2)} offset=${this.vecToStr(this.tmpVec1)}`); 
+            glMatrix.vec3.add( this.tmpVec, this.tmpVec, this.tmpVec1);          
+            console.log(`CanvasUI create keyboard 3 theta=${theta.toFixed(2)} offset=${this.vecToStr(this.tmpVec)}`); 
             const obj = this.keyboard.object;
             glMatrix.quat.fromEuler( this.tmpQuat, -15, 0, 0 );
             obj.rotate( this.tmpQuat );
-            obj.translate( [0, -height*12, 12] );
+            obj.translate( this.tmpVec );//[0, -height*12, 12] );
             glMatrix.vec3.divide(this.tmpVec, obj.scalingLocal, object.scalingWorld);
             obj.resetScaling();
             obj.scale(this.tmpVec);
@@ -395,7 +413,50 @@ class CanvasUI{
         
         this.update();
 	}
+
+    vecToStr( v, precision=2){
+        let str = "";
+         
+        if (v){
+            for(let i=0; i<v.length; i++){
+                str += v[i].toFixed(precision) + ', ';
+            }
+        }
+
+        return str;
+    }
 	
+    //returns yaw, pitch, roll
+    getEuler(out, quat) {
+        let x = quat[0],
+          y = quat[1],
+          z = quat[2],
+          w = quat[3],
+          x2 = x * x,
+          y2 = y * y,
+          z2 = z * z,
+          w2 = w * w;
+        let unit = x2 + y2 + z2 + w2;
+        let test = x * w - y * z;
+        if (test > 0.499995 * unit) { //TODO: Use glmatrix.EPSILON
+          // singularity at the north pole
+          out[0] = Math.PI / 2;
+          out[1] = 2 * Math.atan2(y, x);
+          out[2] = 0;
+        } else if (test < -0.499995 * unit) { //TODO: Use glmatrix.EPSILON
+          // singularity at the south pole
+          out[0] = -Math.PI / 2;
+          out[1] = 2 * Math.atan2(y, x);
+          out[2] = 0;
+        } else {
+          out[0] = Math.asin(2 * (x * z - w * y));
+          out[1] = Math.atan2(2 * (x * w + y * z), 1 - 2 * (z2 + w2));
+          out[2] = Math.atan2(2 * (x * y + z * w), 1 - 2 * (y2 + z2));
+        }
+        // TODO: Return them as degrees and not as radians
+        return out;
+      }
+
     getIntersectY( index ){
         const height = this.config.height || 512;
         const intersect = this.intersects[index];
