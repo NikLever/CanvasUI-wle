@@ -1,3 +1,258 @@
+import { Texture, Object3D } from "@wonderlandengine/api";
+import { vec3, quat } from "gl-matrix";
+
+class CanvasKeyboard{
+    constructor( width, canvasui, lang = "EN" ){
+        const config = this.getConfig( lang );
+        config.panelSize = { width, height: width * 0.5 };
+        config.height = 256;
+        config.body = { backgroundColor: "#555" };
+
+        const object = WL.scene.addObject();
+        object.name = 'keyboard';
+        const mesh = object.addComponent('mesh');
+        const uimesh = canvasui.object.getComponent('mesh');
+        mesh.mesh = uimesh.mesh;
+        mesh.material = uimesh.material.clone();
+        object.addComponent('cursor-target');
+
+        const content = this.getContent(lang);
+
+        this.keyboard = new CanvasUI( content, config, object, canvasui.engine );
+
+        this.tmpVec = new Float32Array(3);
+    }
+    
+    get object(){
+        return this.keyboard.object;
+    }
+    
+    getConfig( lang ){
+        //EN
+        //keys
+        //qwertyuiop - 10 square - btn0-btn9
+        //asdfghjkl@ - 10 square buttons - btn10-btn19
+        //^zxcvbnm< - 1.5 shift,7 square,1.5 backspace - btn20-btn28
+        //[?123],space.[Enter] - 2,1,4,1,2 - btn30-btn34
+        //keys shifted
+        //QWERTYUIOP - 10 square 
+        //ASDFGHJKL@ - 10 square buttons
+        //^ZXCVBNM< - 1.5 shift,7 square,1.5 backspace
+        //[?123],space.[Enter] - 2,1,4,1,2
+        //numbers
+        //1234567890 - 10 square
+        //@#%&*/-+() - 10 sq
+        //^?!"'\:;< - 1.5 shift,7 square,1.5 backspace
+        //[ABC],space.[Enter] - 2,1,4,1,2
+        //numbers shifted
+        //1234567890 - 10 square
+        //€£$^=|{}[] - 10 sq
+        //^<>_`~:;< - 1.5 shift,7 square,1.5 backspace
+        //[ABC],space.[Enter] - 2,1,4,1,2
+        const config = {};
+        let padding = 10;
+        const paddingTop = 20;
+        const width = ((512 - 2 * padding) / 10) - padding;
+        const height = (( 256 - 2 * padding) / 4) - padding;
+        const hover = "#333";
+        const backgroundColor = "#000";
+        //Top row
+        let y = padding;
+        let x = padding;
+        for (let i=0; i<10; i++){
+            const btn = { type: "button", position: { x, y }, width, height, padding, paddingTop, backgroundColor, borderRadius:6, hover, onSelect: this.onSelect.bind( this, i ) }
+            config[`btn${i}`] = btn;
+            x += (width + padding);
+        }
+        //2nd row
+        y += (height + padding);
+        x = padding;
+        for (let i=0; i<10; i++){
+            const btn = { type: "button", position: { x, y }, width, height, padding, paddingTop, backgroundColor, borderRadius:6, hover, onSelect: this.onSelect.bind( this, i + 10 ) }
+            config[`btn${i+10}`] = btn;
+            x += (width + padding);
+        }
+        //3rd row
+        y += (height + padding);
+        x = padding;
+        for (let i=0; i<9; i++){
+            const w = (i==0 || i==8) ? (width * 1.5 + padding * 0.5) : width;
+            const btn = { type: "button", position: { x, y }, width: w, height, padding, paddingTop, backgroundColor, borderRadius:6, hover, onSelect: this.onSelect.bind( this, i + 20 ) };
+            config[`btn${i+20}`] = btn;
+            x += ( w + padding );
+        }
+        //4rd row
+        y += (height + padding);
+        x = padding;
+        for (let i=0; i<5; i++){
+            const w = (i==0 || i==4) ? (width * 2 + padding) : (i==2) ? (width * 4 + 3 * padding) : width;
+            const btn = { type: "button", position: { x, y }, width: w, height, padding, paddingTop, backgroundColor, borderRadius:6, hover, onSelect: this.onSelect.bind( this, i + 30 ) };
+            if (i==0) btn.fontSize = 20;
+            config[`btn${i+30}`] = btn;
+            x += ( w + padding );
+        }
+        return config;
+    }
+    
+    getContent( lang, layoutIndex=0 ){
+        let content = {};
+        let keys;
+        
+        this.language = lang;
+        this.keyboardIndex = layoutIndex;
+        
+        switch(layoutIndex){
+            case 0:
+                //EN
+                //keys
+                //qwertyuiop - 10 square - btn0-btn9
+                //asdfghjkl@ - 10 square buttons - btn10-btn19
+                //^zxcvbnm< - 1.5 shift,7 square,1.5 backspace - btn20-btn28
+                //[?123],space.[Enter] - 1.5,1,4,1,1.5 - btn30-btn34
+                keys = [ 'q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p', 
+                         'a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', '@',
+                         '⇧', 'z', 'x', 'c', 'v', 'b', 'n', 'm', '⇦', '',
+                         '?123', ',', '   ', '.', '↲'];
+                for(let i=0; i<keys.length; i++){
+                    const key = keys[i];
+                    if (key!=='') content[`btn${i}`] = key;
+                }
+                break;
+            case 1:
+                //keys shifted
+                //QWERTYUIOP - 10 square 
+                //ASDFGHJKL@ - 10 square buttons
+                //^ZXCVBNM< - 1.5 shift,7 square,1.5 backspace
+                //[?123],space.[Enter] - 1.5,1,4,1,1.5
+                keys = [ 'Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P', 
+                         'A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L', '@',
+                         '⇧', 'Z', 'X', 'C', 'V', 'B', 'N', 'M', '⇦', '',
+                         '?123', ',', '   ', '.', '↲'];
+                for(let i=0; i<keys.length; i++){
+                    const key = keys[i];
+                    if (key!=='') content[`btn${i}`] = key;
+                }
+                break;
+            case 2:
+                //numbers
+                //1234567890 - 10 square
+                //@#%&*/-+() - 10 sq
+                //^?!"'\:;< - 1.5 shift,7 square,1.5 backspace
+                //[ABC],space.[Enter] - 1.5,1,4,1,1.5
+                keys = [ '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', 
+                         '@', '#', '%', '&', '*', '/', '-', '+', '(', ')',
+                         '⇧', '?', '!', '"', '\'', '\\', ':', ';', '⇦', '',
+                         'abc', ',', '   ', '.', '↲'];
+                for(let i=0; i<keys.length; i++){
+                    const key = keys[i];
+                    if (key!=='') content[`btn${i}`] = key;
+                }
+                break;
+            case 3:
+                //numbers shifted
+                //1234567890 - 10 square
+                //€£$^=|{}[] - 10 sq
+                //^<>_`~:;< - 1.5 shift,7 square,1.5 backspace
+                //[ABC],space.[Enter] - 1.5,1,5,1,1.5
+                keys = [ '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', 
+                         '€', '£', '$', '^', '=', '|', '{', '}', '[', '}',
+                         '⇧', '<', '>', '_', '`', '~', ':', ';', '⇦', '',
+                         'abc', ',', '   ', '.', '↲'];
+                for(let i=0; i<keys.length; i++){
+                    const key = keys[i];
+                    if (key!=='') content[`btn${i}`] = key;
+                }
+                break;
+        }
+        
+        return content;
+    }
+    
+    get position(){
+        const pos = this.keyboard.object.getTranslationWorld( this.tmpVec );
+        return pos;    
+    }
+
+    get positionLocal(){
+        const pos = this.keyboard.object.getTranslationLocal( this.tmpVec );
+        return pos;    
+    }
+    
+    get visible(){
+        return this.active;
+    }
+    
+    set visible( value ){
+        this.keyboard.object.active = value;  
+        this.active = value;  
+    }
+    
+    setKeyboard( index ){
+        this.keyboard.content = this.getContent( this.language, index );
+        this.keyboard.needsUpdate = true;
+    }
+    
+    onSelect( index ){
+        if ( !this.visible ) return
+        
+        //console.log( `CanvasKeyboard onSelect: key index ${index}`);
+        let change = false;
+        
+        switch(index){
+            case 34://Enter
+                this.visible = false;
+                if ( this.linkedElement.onEnter ) this.linkedElement.onEnter( this.linkedText );
+                break;
+            case 32://space
+                this.linkedText += ' ';
+                change = true;
+                break;
+            case 30://switch keyboard
+                this.shift = false;
+                if (this.keyboardIndex<2){
+                    this.setKeyboard( 2 );
+                }else{
+                    this.setKeyboard( 0 );
+                }
+                this.keyboard.needsUpdate = true;
+                break;
+            case 28://backspace
+                this.linkedText = this.linkedText.substring( 0, this.linkedText.length-1 );
+                change = true;
+                break;
+            case 20://shift
+                this.shift = !this.shift;
+                if (this.keyboardIndex==0){
+                    this.setKeyboard( 1 );
+                }else if (this.keyboardIndex==1){
+                    this.setKeyboard( 0 );
+                }else if (this.keyboardIndex==2){
+                    this.setKeyboard( 3 );
+                }else if (this.keyboardIndex==3){
+                    this.setKeyboard( 2 );
+                }
+                break;
+            default:
+                const txt = this.keyboard.content[`btn${index}`];
+                this.linkedText += txt;
+                change = true;
+                if (this.keyboardIndex==1) this.setKeyboard( 0 );
+                break;
+        }
+        
+        if ( change ){
+            this.linkedUI.updateElement( this.linkedName, this.linkedText );
+            if ( this.linkedElement.onChanged) this.linkedElement.onChanged( this.linkedText );
+        }
+    }
+    
+    update(){
+        if (this.keyboard){
+            this.keyboard.update();
+        }
+    }
+}
+
 
 /*An element is defined by 
 type: text | button | image | shape
@@ -18,7 +273,7 @@ clipPath: svg path
 border: width color style
 */
 class CanvasUI{
-	constructor(content, config, object){
+	constructor(content, config, object, engine){
         const defaultconfig = {
             width: 512,
             height: 512,
@@ -83,12 +338,12 @@ class CanvasUI{
         const mesh = object.getComponent('mesh');
         this.material = mesh.material;
 
-        this.canvasTexture = new WL.Texture(this.canvas);
+        this.canvasTexture = new Texture(engine, this.canvas);
         this.material.flatTexture = this.canvasTexture;
 
         if (config.panelSize){
             object.resetScaling();
-            const scale = [config.panelSize.width, 0.01, config.panelSize.height]
+            const scale = [config.panelSize.width, config.panelSize.height, 0.01];
             object.scale( scale );
             this.panelSize = config.panelSize;
         }else{
@@ -96,6 +351,7 @@ class CanvasUI{
         }
 
         this.object = object;
+        this.engine = engine;
         this.tmpVec = new Float32Array(3);
         this.tmpVec1 = new Float32Array(3);
         this.tmpQuat = new Float32Array(4);
@@ -106,10 +362,30 @@ class CanvasUI{
         if ( inputs.length > 0 ){
             const width = (config.panelSize) ? config.panelSize.width : 1;
             const height = (config.panelSize) ? config.panelSize.height : 1;
+            let halfheight = height/2;
             this.keyboard = new CanvasKeyboard(width, this );
+            //Calculate main panel offset
+            this.getEuler( this.tmpVec, this.object.rotationWorld );
+            let theta = this.tmpVec[1];
+            this.tmpVec[0] = 0;
+            this.tmpVec[2] = -Math.cos(theta)/halfheight;
+            this.tmpVec[1] = Math.sin(theta)/halfheight;
+            console.log(`CanvasUI create keyboard 1 theta=${theta.toFixed(2)} offset=${this.vecToStr(this.tmpVec)}`);
+            //Calculate keyboard panel offset
+            halfheight = width/4;
+            this.getEuler( this.tmpVec1, this.keyboard.keyboard.object.rotationWorld );
+            theta += -15 * Math.PI/180;
+            this.tmpVec1[0] = 0;
+            this.tmpVec1[2] = -Math.cos(theta)/halfheight;
+            this.tmpVec1[1] = Math.sin(theta)/halfheight;           
+            console.log(`CanvasUI create keyboard 2 theta=${theta.toFixed(2)} offset=${this.vecToStr(this.tmpVec1)}`); 
+            vec3.add( this.tmpVec, this.tmpVec, this.tmpVec1);          
+            console.log(`CanvasUI create keyboard 3 theta=${theta.toFixed(2)} offset=${this.vecToStr(this.tmpVec)}`); 
             const obj = this.keyboard.object;
-            obj.translate( [0, -height, -3] );
-            glMatrix.vec3.divide(this.tmpVec, obj.scalingLocal, object.scalingWorld);
+            quat.fromEuler( this.tmpQuat, -15, 0, 0 );
+            obj.rotate( this.tmpQuat );
+            obj.translate( this.tmpVec );//[0, -height*12, 12] );
+            vec3.divide(this.tmpVec, obj.scalingLocal, object.scalingWorld);
             obj.resetScaling();
             obj.scale(this.tmpVec);
             obj.parent = object;
@@ -124,7 +400,10 @@ class CanvasUI{
             this.content = content;
             const btns = Object.values(config).filter( (value) => { return value.type === "button" || value.overflow === "scroll" || value.type === "input-text" });
             if (btns.length>0){
-                WL.onXRSessionStart.push(this.initControllers.bind(this));
+                this.engine.onXRSessionStart.add(this.initControllers.bind(this));
+                const extents = new Float32Array(3);
+                vec3.copy( extents, this.object.scalingWorld );
+                const collision = this.object.addComponent( 'collision', { collider: 2, extents, group: this.collisionGroup });
             }
         }
         
@@ -137,7 +416,50 @@ class CanvasUI{
         
         this.update();
 	}
+
+    vecToStr( v, precision=2){
+        let str = "";
+         
+        if (v){
+            for(let i=0; i<v.length; i++){
+                str += v[i].toFixed(precision) + ', ';
+            }
+        }
+
+        return str;
+    }
 	
+    //returns yaw, pitch, roll
+    getEuler(out, quat) {
+        let x = quat[0],
+          y = quat[1],
+          z = quat[2],
+          w = quat[3],
+          x2 = x * x,
+          y2 = y * y,
+          z2 = z * z,
+          w2 = w * w;
+        let unit = x2 + y2 + z2 + w2;
+        let test = x * w - y * z;
+        if (test > 0.499995 * unit) { //TODO: Use glmatrix.EPSILON
+          // singularity at the north pole
+          out[0] = Math.PI / 2;
+          out[1] = 2 * Math.atan2(y, x);
+          out[2] = 0;
+        } else if (test < -0.499995 * unit) { //TODO: Use glmatrix.EPSILON
+          // singularity at the south pole
+          out[0] = -Math.PI / 2;
+          out[1] = 2 * Math.atan2(y, x);
+          out[2] = 0;
+        } else {
+          out[0] = Math.asin(2 * (x * z - w * y));
+          out[1] = Math.atan2(2 * (x * w + y * z), 1 - 2 * (z2 + w2));
+          out[2] = Math.atan2(2 * (x * y + z * w), 1 - 2 * (y2 + z2));
+        }
+        // TODO: Return them as degrees and not as radians
+        return out;
+      }
+
     getIntersectY( index ){
         const height = this.config.height || 512;
         const intersect = this.intersects[index];
@@ -153,7 +475,7 @@ class CanvasUI{
     initControllers(s){
         this.session = s;
         //Get rayleft and right
-        const root = new WL.Object(0);
+        const root = new Object3D(0);
         root.children.forEach( child => {
             if (child.name == 'Player'){
                 const space = child.children[0];
@@ -165,11 +487,6 @@ class CanvasUI{
         });
 
         if (!(this.rayLeft && this.rayRight)) console.warn( 'Player CursorLeft or Player CursorRight not found');
-
-        const extents = new Float32Array(3);
-        glMatrix.vec3.copy( extents, this.object.scalingWorld );
-        //glMatrix.vec3.scale( extents, extents, 1.1 );
-        const collision = this.object.addComponent( 'collision', { collider: 2, extents, group: this.collisionGroup })
         
         function onSelect( event ) {     
             const index = (event.inputSource.handedness === 'left') ? 0 : 1;
@@ -228,7 +545,7 @@ class CanvasUI{
         s.addEventListener( 'selectend', onSelectEnd.bind(this) );
         
     }
-    
+
     setClip( elm ){
         const context = this.context;
         
@@ -353,12 +670,36 @@ class CanvasUI{
          
     }
     
-    select( index = 0 ){
+    select( index = 0, mouse=false ){
         if (this.selectedElements[index] !== undefined){
             const elm = this.selectedElements[index];
             if (elm.onSelect) elm.onSelect();
             if (elm.type === 'input-text'){
-                this.keyboard.object.active = true;
+                if (mouse){
+                    if ( this.keyboard ){
+                        if ( this.keyboard.visible ){
+                            this.keyboard.linkedUI = undefined;
+                            this.keyboard.linkedText = undefined;
+                            this.keyboard.linkedElement = undefined;
+                            this.keyboard.visible = false;
+                        }else{
+                            this.keyboard.linkedUI = this;
+                            let name;
+                            Object.entries( this.config ).forEach( ([prop, value]) => {
+                                if ( value == elm ) name = prop;
+                            });
+                            const y = (0.5-((elm.position.y + elm.height + this.config.body.padding )/this.config.height)) * this.panelSize.height;
+                            const h = Math.max( this.panelSize.width, this.panelSize.height )/2;
+                            //this.keyboard.position.set( [0, h/1.5 - y, -0.1] );
+                            this.keyboard.linkedText = this.content[ name ];
+                            this.keyboard.linkedName = name;
+                            this.keyboard.linkedElement = elm;
+                            this.keyboard.visible = true;
+                        }
+                    }
+                }else{
+                    this.keyboard.visible = (this.keyboard.visible) ? false : true;
+                }
             }else{
                 this.selectedElements[index] = undefined;
             }
@@ -392,13 +733,13 @@ class CanvasUI{
         
     worldToCanvas( pos ){
         this.object.transformPointInverseWorld( this.tmpVec, pos );
-        glMatrix.vec3.copy( this.tmpVec1, this.object.scalingWorld );
-        glMatrix.vec3.div( this.tmpVec, this.tmpVec, this.tmpVec1 );
+        vec3.copy( this.tmpVec1, this.object.scalingWorld );
+        vec3.div( this.tmpVec, this.tmpVec, this.tmpVec1 );
         const xy = new Float32Array(2);
-        xy[0] = (1 - (this.tmpVec[0]+1)/2) * this.config.width;
-        xy[1] = (1 - (this.tmpVec[2]+1)/2) * this.config.height;
+        xy[0] = ((this.tmpVec[0]+1)/2) * this.config.width;
+        xy[1] = (1-(this.tmpVec[1]+1)/2) * this.config.height;
         //obj:${this.tmpVec[0].toFixed(2)},${this.tmpVec[2].toFixed(2)}`;
-        //const str = `pos:${pos[0].toFixed(2)},${pos[2].toFixed(2)} xy:${xy[0].toFixed(2)},${xy[1].toFixed(2)}`;
+        //const str = `pos:${pos[0].toFixed(2)},${pos[1].toFixed(2)} xy:${xy[0].toFixed(2)},${xy[1].toFixed(2)}`;
         //this.updateElement('info', str);
         //if (this.selectIsPressed) console.log(`CanvasUI.worldToCanvas ${str}`);
         return xy;
@@ -705,3 +1046,5 @@ class CanvasUI{
 		});
 	}
 }
+
+export { CanvasUI };
