@@ -1446,7 +1446,7 @@
                     "type": "uiHandler",
                     "active": true,
                     "uiHandler": {
-                        "panel": "simple"
+                        "panel": "input-text"
                     }
                 },
                 {
@@ -2361,12 +2361,11 @@
         "scripting": {
             "sourcePaths": [
                 "js/"
-            ],
+            ]
             "libraryPaths": [
                 "/js/lib/"
             ],
             "bundlingType": "esbuild"
-        },
         "runtime": {
             "visualizeColliders": false,
             "webxr": {
